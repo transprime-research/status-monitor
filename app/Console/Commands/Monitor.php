@@ -42,64 +42,77 @@ class Monitor extends Command
     public function handle()
     {
         $failureCount = 0;
+        $failureNotificationSent = false;
 
         $maxResponseTime = config('monitor.max_allowed_response_time');
         $requestInterval = config('monitor.request_interval');
 
         $loop = Factory::create();
 
-        $loop->addPeriodicTimer($requestInterval, function () use ($maxResponseTime, &$failureCount){
+        $loop->addPeriodicTimer($requestInterval, function () use ($maxResponseTime, &$failureCount, &$failureNotificationSent) {
 
             $failed = false;
 
             $this->warn('Pinging ' . $this->argument('url'));
 
-            try {
-                $response = Http::timeout($maxResponseTime)->get($this->argument('url'), [
-                    'content_string' => $this->argument('content_str')
-                ]);
-                $statusCode = $response->status();
-                $responseContent = $response->body();
-            } catch (ConnectionException $exception) {
-                $statusCode = $exception->getCode();
-                $responseContent = '';
-            }
+            [$statusCode, $responseContent] = $this->makeRequest(
+                $this->argument('url'),
+                $this->argument('content_str'),
+                $maxResponseTime
+            );
 
             $this->info('Checking Status code...');
 
-            if (Response::HTTP_OK !== $statusCode) {
+            if ($this->requestFailed($statusCode, $responseContent)) {
+
                 $failed = true;
 
-                $failureCount ++;
+                $failureCount++;
             }
 
-            if (! $failed && $failureCount >= 3) {
+
+            if (!$failed && $failureNotificationSent) {
+
                 $this->alert('SITE IS UP');
 
                 $failureCount = 0;
+                $failureNotificationSent = false;
             }
 
-            if ($failureCount >= 3) {
+            if ($failureCount === 3) {
+
                 $this->alert('SITE IS DOWN');
 
                 $failureCount = 0;
+
+                $failureNotificationSent = true;
             }
-
-            if ($failed) {
-                return;
-            }
-
-            $this->info('Checking content string...');
-
-            if (str_contains($responseContent, $this->argument('content_str'))) {
-                $this->info('Found content ' . $this->argument('content_str') . ' in the response.');
-
-                return;
-            }
-
-            dump('No response received');
         });
 
         $loop->run();
+    }
+
+    private function requestFailed(int $statusCode, ?string $content)
+    {
+        return (
+            Response::HTTP_OK !== $statusCode
+            || !str_contains($content, $this->argument('content_str'))
+        );
+    }
+
+    private function makeRequest($url, $contentString, $maxResponseTime)
+    {
+        try {
+            $response = Http::timeout($maxResponseTime)->get($url, [
+                'content_string' => $contentString
+            ]);
+            $statusCode = $response->status();
+            $responseContent = $response->body();
+        } catch (ConnectionException $exception) {
+            $statusCode = $exception->getCode();
+            $responseContent = '';
+        }
+
+        return [$statusCode, $responseContent];
     }
 }
