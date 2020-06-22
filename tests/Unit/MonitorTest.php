@@ -2,12 +2,11 @@
 
 namespace Tests\Unit;
 
-use App\Console\Commands\Monitor;
-use Illuminate\Contracts\Console\Kernel;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Http;
-use Mockery\MockInterface;
 use Tests\TestCase;
+use Mockery\MockInterface;
+use App\Console\Commands\Monitor;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Contracts\Console\Kernel;
 
 class MonitorTest extends TestCase
 {
@@ -15,7 +14,6 @@ class MonitorTest extends TestCase
     public function setUp(): void
     {
         parent::setUp();
-
     }
 
     /**
@@ -68,7 +66,7 @@ class MonitorTest extends TestCase
                 ->push('Hello World', 400)
                 ->push('Hello World', 200);
 
-            $kernel->call('monitor:status https://omitobisam1.com World');
+            $kernel->call('monitor:status https://omitobisam1.com World')->terminate();
         } catch (\OutOfBoundsException $exception) {
             $output = (string)$kernel->output();
             $this->assertStringContainsString('SITE IS DOWN', $output);
@@ -121,4 +119,19 @@ class MonitorTest extends TestCase
             $this->assertEquals(1, substr_count($output, 'SITE IS DOWN'));
         }
     }
+
+//    public function testSiteIsDownNotificationCameUpBecauseOfTimeOut()
+//    {
+//        Http::fake()
+//
+//        $kernel = $this->app->make(Kernel::class);
+//
+//        $kernel->call('monitor:status https://site.example Hello');
+//
+//        $output = (string)$kernel->output();
+//
+//        $this->assertStringContainsString('SITE IS DOWN', $output);
+//
+//        $this->assertEquals(1, substr_count($output, 'SITE IS DOWN'));
+//    }
 }

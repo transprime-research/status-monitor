@@ -49,7 +49,17 @@ class Monitor extends Command
 
         $loop = Factory::create();
 
-        $loop->addPeriodicTimer($requestInterval, function () use ($maxResponseTime, &$failureCount, &$failureNotificationSent) {
+        $loop->addPeriodicTimer(
+            $requestInterval,
+            $this->ping($maxResponseTime, $failureCount, $failureNotificationSent)
+        );
+
+        $loop->run();
+    }
+
+    private function ping(int $maxResponseTime, int $failureCount, bool $failureNotificationSent)
+    {
+        return function () use ($maxResponseTime, &$failureCount, &$failureNotificationSent) {
 
             $failed = false;
 
@@ -63,13 +73,12 @@ class Monitor extends Command
 
             $this->info('Checking Status code...');
 
-            if ($this->requestFailed($statusCode, $responseContent)) {
+            if ($this->hasRequestFailed($statusCode, $responseContent)) {
 
                 $failed = true;
 
                 $failureCount++;
             }
-
 
             if (!$failed && $failureNotificationSent) {
 
@@ -87,12 +96,15 @@ class Monitor extends Command
 
                 $failureNotificationSent = true;
             }
-        });
-
-        $loop->run();
+        };
     }
 
-    private function requestFailed(int $statusCode, ?string $content)
+    /**
+     * @param int $statusCode
+     * @param string|null $content
+     * @return bool
+     */
+    private function hasRequestFailed(int $statusCode, ?string $content)
     {
         return (
             Response::HTTP_OK !== $statusCode
@@ -100,6 +112,12 @@ class Monitor extends Command
         );
     }
 
+    /**
+     * @param string $url
+     * @param string $contentString
+     * @param string $maxResponseTime
+     * @return array
+     */
     private function makeRequest($url, $contentString, $maxResponseTime)
     {
         try {
