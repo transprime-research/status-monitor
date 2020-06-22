@@ -65,12 +65,18 @@ class Monitor extends Command
                 $responseContent = '';
             }
 
-            $this->info('Checking Status code');
+            $this->info('Checking Status code...');
 
             if (Response::HTTP_OK !== $statusCode) {
                 $failed = true;
 
                 $failureCount ++;
+            }
+
+            if (! $failed && $failureCount >= 3) {
+                $this->alert('SITE IS UP');
+
+                $failureCount = 0;
             }
 
             if ($failureCount >= 3) {
@@ -87,12 +93,11 @@ class Monitor extends Command
 
             if (str_contains($responseContent, $this->argument('content_str'))) {
                 $this->info('Found content ' . $this->argument('content_str') . ' in the response.');
-                dump($responseContent);
 
                 return;
             }
 
-            dump('No response existing');
+            dump('No response received');
         });
 
         $loop->run();
