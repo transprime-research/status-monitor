@@ -10,12 +10,6 @@ use Illuminate\Contracts\Console\Kernel;
 
 class MonitorTest extends TestCase
 {
-
-    public function setUp(): void
-    {
-        parent::setUp();
-    }
-
     /**
      * A basic unit test example.
      *
@@ -49,7 +43,7 @@ class MonitorTest extends TestCase
                 ->push('Hello World', 400)
                 ->push('Hello World', 400);
 
-            $kernel->call('monitor:status https://omitobisam1.com World');
+            $kernel->call('monitor:status http://site.example World');
         } catch (\OutOfBoundsException $exception) {
             $this->assertStringContainsString('SITE IS DOWN', $kernel->output());
         }
@@ -66,7 +60,7 @@ class MonitorTest extends TestCase
                 ->push('Hello World', 400)
                 ->push('Hello World', 200);
 
-            $kernel->call('monitor:status https://omitobisam1.com World')->terminate();
+            $kernel->call('monitor:status http://site.example World')->terminate();
         } catch (\OutOfBoundsException $exception) {
             $output = (string)$kernel->output();
             $this->assertStringContainsString('SITE IS DOWN', $output);
@@ -86,7 +80,7 @@ class MonitorTest extends TestCase
                 ->push('Hello World', 400)
                 ->push('Hello World', 200);
 
-            $kernel->call('monitor:status https://omitobisam1.com World');
+            $kernel->call('monitor:status http://site.example World');
         } catch (\OutOfBoundsException $exception) {
 
             $output = (string)$kernel->output();
@@ -109,7 +103,7 @@ class MonitorTest extends TestCase
                 ->push('Hello World', 200)
                 ->push('Hello World', 200);
 
-            $kernel->call('monitor:status https://site.example Ninja');
+            $kernel->call('monitor:status http://site.example Ninja');
         } catch (\OutOfBoundsException $exception) {
 
             $output = (string)$kernel->output();
