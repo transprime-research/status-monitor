@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Http;
 
 class Monitor extends Command
@@ -38,25 +39,49 @@ class Monitor extends Command
      */
     public function handle()
     {
-        $this->warn('Pinging '.$this->argument('url'));
+        $failureCount = 0;
+        $limit = 5;
 
-        $response = Http::timeout(10)->get($this->argument('url'), [
-            'content_string' => $this->argument('content_str')
-        ]);
+        while ($limit > 0) {
+            $limit --;
 
-        $this->info('Checking Status code');
+            $failed = false;
 
-        if ($response->sta)
+            $this->warn('Pinging ' . $this->argument('url'));
 
-        $this->info('Checking content string...');
+            $response = Http::timeout(10)->get($this->argument('url'), [
+                'content_string' => $this->argument('content_str')
+            ]);
 
-        if (str_contains($content = $response->body(), $this->argument('content_str'))) {
-            $this->info('Found content '.$this->argument('content_str').' in the response.');
-            dump($content);
+            $this->info('Checking Status code');
 
-            return ;
+            if ($response->status() !== Response::HTTP_OK) {
+                $failed = true;
+
+                $failureCount ++;
+            }
+
+            if ($failureCount >= 3) {
+                $this->alert('SITE IS DOWN');
+
+                $failureCount = 0;
+            }
+
+            if ($failed) {
+                continue;
+            }
+
+            $this->info('Checking content string...');
+
+            if (str_contains($content = $response->body(), $this->argument('content_str'))) {
+                $this->info('Found content ' . $this->argument('content_str') . ' in the response.');
+                dump($content);
+
+                continue;
+            }
+
+            dump('No response existing');
         }
 
-        dump('No response existing');
     }
 }
