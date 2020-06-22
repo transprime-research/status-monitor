@@ -1,23 +1,23 @@
 version: "3"
 
 services:
-  mornitor:
+  monitor:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: mornitor
+    container_name: monitor
     restart: unless-stopped
     tty: true
     working_dir: /var/www/html
     environment:
       SERVICE_TAGS: dev
-      SERVICE_NAME: mornitor
+      SERVICE_NAME: monitor
     volumes:
       - ./:/var/www/html
     networks:
-      - mornitor-network
+      - monitor-network
 
 #Docker Networks
 networks:
-  mornitor-network:
+  monitor-network:
     driver: bridge

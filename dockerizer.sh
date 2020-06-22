@@ -10,4 +10,4 @@ fi
 
 docker-compose up -d --remove-orphans
 
-docker-compose exec mornitor composer install
+docker-compose exec monitor composer install
