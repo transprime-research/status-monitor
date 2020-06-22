@@ -3,8 +3,10 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Http;
+use React\EventLoop\Factory;
 
 class Monitor extends Command
 {
@@ -40,22 +42,32 @@ class Monitor extends Command
     public function handle()
     {
         $failureCount = 0;
-        $limit = 5;
 
-        while ($limit > 0) {
-            $limit --;
+        $maxResponseTime = config('monitor.max_allowed_response_time');
+        $requestInterval = config('monitor.request_interval');
+
+        $loop = Factory::create();
+
+        $loop->addPeriodicTimer($requestInterval, function () use ($maxResponseTime, &$failureCount){
 
             $failed = false;
 
             $this->warn('Pinging ' . $this->argument('url'));
 
-            $response = Http::timeout(10)->get($this->argument('url'), [
-                'content_string' => $this->argument('content_str')
-            ]);
+            try {
+                $response = Http::timeout($maxResponseTime)->get($this->argument('url'), [
+                    'content_string' => $this->argument('content_str')
+                ]);
+                $statusCode = $response->status();
+                $responseContent = $response->body();
+            } catch (ConnectionException $exception) {
+                $statusCode = $exception->getCode();
+                $responseContent = '';
+            }
 
             $this->info('Checking Status code');
 
-            if ($response->status() !== Response::HTTP_OK) {
+            if (Response::HTTP_OK !== $statusCode) {
                 $failed = true;
 
                 $failureCount ++;
@@ -68,20 +80,21 @@ class Monitor extends Command
             }
 
             if ($failed) {
-                continue;
+                return;
             }
 
             $this->info('Checking content string...');
 
-            if (str_contains($content = $response->body(), $this->argument('content_str'))) {
+            if (str_contains($responseContent, $this->argument('content_str'))) {
                 $this->info('Found content ' . $this->argument('content_str') . ' in the response.');
-                dump($content);
+                dump($responseContent);
 
-                continue;
+                return;
             }
 
             dump('No response existing');
-        }
+        });
 
+        $loop->run();
     }
 }
